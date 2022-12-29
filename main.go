@@ -1,15 +1,14 @@
 package main
 
 import (
-    "net"
     "log"
     "flag"
-
     "io/ioutil"
     "strings"
+    "github.com/exsued/httpping"
 )
 
-func parseConf(filePath string) ([]*net.IPAddr, error) {
+func parseConf(filePath string) ([]string, error) {
     bytesRead, err := ioutil.ReadFile("sites.txt")
     if err != nil {
         return nil, err    
@@ -23,15 +22,20 @@ func parseConf(filePath string) ([]*net.IPAddr, error) {
             lines = append(lines, rawline)        
         }
     }
-    result := make([]*net.IPAddr, len(lines))
+    result := make([]string, len(lines))
 
     for i, line := range lines {
-        result[i], err = net.ResolveIPAddr("ip4:icmp", line)
-        if err != nil {
-            return nil, err
-        }        
+        result[i] = line      
     }
     return result, nil
+}
+
+func gimba() {
+    log.Println("Gocha")
+}
+
+func banga() {
+    log.Println("!Alarm!")
 }
 
 func main () {
@@ -50,14 +54,8 @@ func main () {
     }
 
     //http пинговка
-    HttpPingLoop(addrs, interval, alarminterval)
-    //icmp пинговка
-    /*
-    for err == nil {
-        err = icmpPing(addrs)        
-        if err != nil {
-            log.Println(err)  
-        }  
-    }
-    */
+    pinger := httpping.NewHttpPinger(addrs, interval, alarminterval)
+    pinger.OnAlarm = banga
+    pinger.OnRecv = gimba
+    pinger.Start()
 }

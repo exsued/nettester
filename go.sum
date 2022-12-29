@@ -1,3 +1,5 @@
+github.com/exsued/httpping v0.0.0-20221229134311-a3a42733efd5 h1:xX2nQUy16D9I5+DsJSNr6nDnvsSCqmrTwNDl0UlFxlM=
+github.com/exsued/httpping v0.0.0-20221229134311-a3a42733efd5/go.mod h1:RvoNPK0NMRZizFNUlOhUpqz3RjdY/ENmxoNl63HrJrc=
 github.com/tatsushid/go-fastping v0.0.0-20160109021039-d7bb493dee3e h1:nt2877sKfojlHCTOBXbpWjBkuWKritFaGIfgQwbQUls=
 github.com/tatsushid/go-fastping v0.0.0-20160109021039-d7bb493dee3e/go.mod h1:B4+Kq1u5FlULTjFSM707Q6e/cOHFv0z/6QRoxubDIQ8=
 golang.org/x/net v0.4.0 h1:Q5QPcMlvfxFTAPV0+07Xz/MpK9NTXu2VDUuy0FeMfaU=
