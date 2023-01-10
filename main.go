@@ -5,7 +5,15 @@ import (
     "flag"
     "io/ioutil"
     "strings"
+    "strconv"
     "github.com/exsued/httpping"
+    "os/exec"
+    "fmt"
+)
+
+var (
+    alarmScriptPath string
+    debug bool
 )
 
 func parseConf(filePath string) ([]string, error) {
@@ -30,21 +38,34 @@ func parseConf(filePath string) ([]string, error) {
     return result, nil
 }
 
-func gimba() {
-    log.Println("Gocha")
+func OnReceive(httpStatus int) {
+    if debug {
+        log.Println("Success. Returned: " + strconv.Itoa(httpStatus))
+    }
 }
 
-func banga() {
-    log.Println("!Alarm!")
+func OnFailedReceive(err error) {
+    log.Println("Failed." + err.Error())
+}
+func OnAlarm() {
+    cmd, err := exec.Command("/bin/sh", alarmScriptPath).Output()
+    log.Println("Running alarm script")
+    if err != nil {
+        fmt.Println(err)
+    }
+    fmt.Println(string(cmd))
 }
 
 func main () {
     var cfgFilePath string
     var interval float64
     var alarminterval float64
+    var GetTimeout float64
     flag.StringVar(&cfgFilePath, "sites", "./sites.txt", "Path to file with pinged addresses")
-    flag.Float64Var(&interval, "interval", 1.0, "Interval between sending requests")
+    flag.StringVar(&cfgFilePath, "onAlarm", "./alarm.sh", "Path to alarm script")
+    flag.Float64Var(&interval, "interval", 1.0, "Interval between sending requests (sec)")
     flag.Float64Var(&alarminterval, "alarmInterval", 60.0, "Internet problem alert interval (sec)")
+    flag.Float64Var(&GetTimeout, "GetTimeout", 10.0, "HTTP GET Timeout (sec)")
     flag.Parse()
 
     //Парсим список пингуемых адресов
@@ -54,8 +75,9 @@ func main () {
     }
 
     //http пинговка
-    pinger := httpping.NewHttpPinger(addrs, interval, alarminterval)
-    pinger.OnAlarm = banga
-    pinger.OnRecv = gimba
+    pinger := httpping.NewHttpPinger(addrs, interval, alarminterval, GetTimeout)
+    pinger.OnRecv = OnReceive
+    pinger.OnAlarm = OnAlarm
+    pinger.OnFailedRecv = OnFailedReceive
     pinger.Start()
 }
