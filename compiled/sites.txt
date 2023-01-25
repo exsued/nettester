@@ -1,2 +1,6 @@
-youtube.com
-google.com
+t1.proxicom.ru
+t2.proxicom.ru
+t3.proxicom.ru
+t4.proxicom.ru
+t5.proxicom.ru
+t6.proxicom.ru

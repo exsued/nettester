@@ -11,7 +11,6 @@ import (
     "fmt"
     "time"
     "os"
-    "os/user"
     "net"
     "bufio"
 )
@@ -22,18 +21,17 @@ var (
     logDirPath string
     cfgFilePath string
     sessionServer string
+    deviceName string
     packetPrefix = "name_pref"
 
     interval float64
     pinger *httpping.HttpPinger
-    curUser *user.User
-
 )
 
 func LogFile(out string, dirpath string) {
     nowtime := time.Now()
     finalString := nowtime.Format("15:04:05\t") + out + "\n"
-    fileName := dirpath + curUser.Username + ":" + nowtime.Format("2006-01-02") + ".txt"
+    fileName := dirpath + deviceName + ":" + nowtime.Format("2006-01-02") + ".txt"
 
     f, err := os.OpenFile(fileName, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
 	if err != nil {
@@ -93,18 +91,18 @@ func tcpClient() {
         //reader := bufio.NewReader(os.Stdin)
         //fmt.Print("Text to send: ")
         //text, _ := reader.ReadString('\n')
-		text := curUser.Username        
+		text := deviceName
 		fmt.Fprintf(conn, packetPrefix + text + "\n")
         //var message string
-        _, err = bufio.NewReader(conn).ReadString('\n')
+        _, err := bufio.NewReader(conn).ReadString('\n')
         if err != nil {
-            log.Println("TCP server connection error")
-            LogFile("TCP server connection error", logDirPath)
+            log.Println(err)
+            LogFile(err.Error(), logDirPath)
         }
         time.Sleep(time.Duration(interval) * time.Second)
     }
     log.Println(err)
-    LogFile(err.Error() + "\n", logDirPath)
+    LogFile(err.Error(), logDirPath)
 
 }
 
@@ -112,10 +110,11 @@ func main () {
     //vds1.proxinet.com
     var alarminterval float64
     var GetTimeout float64
-    flag.StringVar(&sessionServer, "sessionServer", "vds1.proxicom.ru:1288", "address to long tcp session server")
+    flag.StringVar(&sessionServer, "sessionServer", "vds1.proxicom.ru:1289", "address to long tcp session server")
     flag.StringVar(&cfgFilePath, "sites", "./sites.txt", "Path to file with pinged addresses")
     flag.StringVar(&alarmScriptPath, "onAlarm", "./alarm.sh", "Path to alarm script")
     flag.StringVar(&logDirPath, "log", "./logs/", "Path to log directory")
+    flag.StringVar(&deviceName, "name", "proxicom_test", "Device name")
     flag.Float64Var(&interval, "interval", 1.0, "Interval between sending requests (sec)")
     flag.Float64Var(&alarminterval, "alarmInterval", 60.0, "Internet problem alert interval (sec)")
     flag.Float64Var(&GetTimeout, "GetTimeout", 10.0, "HTTP GET Timeout (sec)")
@@ -130,11 +129,6 @@ func main () {
     if err != nil {
         log.Fatalf(err.Error())
     }
-
-    curUser, err = user.Current()
-	if err != nil {
-		log.Fatalf(err.Error())
-	}
 
     //http пинговка
     pinger = httpping.NewHttpPinger(addrs, interval, alarminterval, GetTimeout)
