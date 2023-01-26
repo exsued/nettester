@@ -12,7 +12,7 @@
 	5. По завершении установки вставить SD карту в Raspberry Pi
 #### 2. Установка net tester:
 	1. Зайти в систему raspbian и подключить её к интернету
-	2. Выполнить: wget https://github.com/exsued/nettester/releases/download/v1.00-alpha/nettester_install.py
-	3. Выполнить: chmod +x ./nettester_install.py
-	4. Выполнить: ./nettester_install.py
-	5. Enter device name: <ввести имя устройства для tcp сервера>
+	2. Выполнить: wget https://github.com/exsued/nettester/releases/download/v1.00/install.sh
+	3. Выполнить: chmod +x ./install.sh
+	4. Выполнить: ./install.sh
+	5. Когда будет Enter device name: <ввести имя устройства для tcp сервера>
