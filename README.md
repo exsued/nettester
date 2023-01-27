@@ -16,3 +16,4 @@
 	3. Выполнить: chmod +x ./install.sh
 	4. Выполнить: ./install.sh
 	5. Когда будет Enter device name: <ввести имя устройства для tcp сервера>
+	6. Когда будет Enter rsync passwd: <ввести пароль для доступа к rsync>
