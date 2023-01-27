@@ -4,15 +4,15 @@ import (
     "log"
     "flag"
     "io/ioutil"
-    "strings"
     "strconv"
+    "strings"
     "github.com/exsued/httpping"
     "os/exec"
     "fmt"
     "time"
     "os"
     "net"
-    "bufio"
+    "encoding/gob"
 )
 
 var (
@@ -23,11 +23,16 @@ var (
     sessionServer string
     deviceName string
     packetPrefix = "name_pref"
+    observedIfaceName = "eth0"
 
     interval float64
     pinger *httpping.HttpPinger
 )
 
+type tcpPacket struct {
+        DeviceName string
+        InnerAddrs []string
+}
 func LogFile(out string, dirpath string) {
     nowtime := time.Now()
     finalString := nowtime.Format("15:04:05\t") + out + "\n"
@@ -42,7 +47,6 @@ func LogFile(out string, dirpath string) {
         log.Fatal(err)
     }
 }
-
 func parseConf(filePath string) ([]string, error) {
     bytesRead, err := ioutil.ReadFile(cfgFilePath)
     if err != nil {
@@ -64,14 +68,12 @@ func parseConf(filePath string) ([]string, error) {
     }
     return result, nil
 }
-
 func OnReceive(httpStatus int) {
     if debug {
         log.Println("Success. Returned: " + strconv.Itoa(httpStatus))
         LogFile("Success. Returned: " + strconv.Itoa(httpStatus), logDirPath)
     }
 }
-
 func OnFailedReceive(err error) {
     log.Println("Failed." + err.Error())
     LogFile("Failed." + err.Error(), logDirPath)
@@ -84,28 +86,61 @@ func OnAlarm() {
     }
     LogFile("Running alarm script: " + " sudo " + " /bin/sh\n" + string(cmd) + "\n", logDirPath)
 }
-
+func getInnerAddrs() (result []string) {
+    ifaces, err := net.Interfaces()
+    if err != nil {
+        log.Println("Get ifaces err")
+        LogFile("Get ifaces err", logDirPath)
+    }
+    for _, i := range ifaces {
+        if i.Name != observedIfaceName {
+            continue
+        }
+        addrs, err := i.Addrs()
+        if err != nil {
+        log.Println("Get addrs of iface",i.Name,"err")
+        LogFile("Get addrs of iface " + i.Name + " err", logDirPath)
+        }
+        for _, addr := range addrs {
+            var ip net.IP
+            switch v := addr.(type) {
+            case *net.IPNet:
+                    ip = v.IP
+            case *net.IPAddr:
+                    ip = v.IP
+            }
+            print(ip.String())
+            result = append(result, ip.String())
+        }
+    }
+    return
+}
 func tcpClient() {
 	conn, err := net.Dial("tcp", sessionServer)
+    if err != nil {
+        log.Println("dial err:", err)
+        LogFile("dial err: " + err.Error(), logDirPath)
+        return
+    }
+    innerAddrs:= getInnerAddrs()
+    encoder := gob.NewEncoder(conn)
+
     for err == nil {
-        //reader := bufio.NewReader(os.Stdin)
-        //fmt.Print("Text to send: ")
-        //text, _ := reader.ReadString('\n')
-		text := deviceName
-		fmt.Fprintf(conn, packetPrefix + text + "\n")
-        //var message string
-        _, err := bufio.NewReader(conn).ReadString('\n')
+        packet := tcpPacket {deviceName, innerAddrs}
+        err = encoder.Encode(packet)
         if err != nil {
-            log.Println(err)
-            LogFile(err.Error(), logDirPath)
+            log.Println("send err:", err)
+            LogFile("send err: " + err.Error(), logDirPath)
+            conn.Close()
         }
         time.Sleep(time.Duration(interval) * time.Second)
     }
-    log.Println(err)
-    LogFile(err.Error(), logDirPath)
-
+    log.Println("conn closed ", err)
+    LogFile("conn closed " + err.Error(), logDirPath)
+    if conn != nil {
+        conn.Close()
+    }
 }
-
 func main () {
     //vds1.proxinet.com
     var alarminterval float64
@@ -115,12 +150,12 @@ func main () {
     flag.StringVar(&alarmScriptPath, "onAlarm", "./alarm.sh", "Path to alarm script")
     flag.StringVar(&logDirPath, "log", "./logs/", "Path to log directory")
     flag.StringVar(&deviceName, "name", "proxicom_test", "Device name")
+    flag.StringVar(&observedIfaceName, "iface", "eth0", "Observed iface name which use for check local addr")
     flag.Float64Var(&interval, "interval", 1.0, "Interval between sending requests (sec)")
     flag.Float64Var(&alarminterval, "alarmInterval", 60.0, "Internet problem alert interval (sec)")
     flag.Float64Var(&GetTimeout, "GetTimeout", 10.0, "HTTP GET Timeout (sec)")
     flag.BoolVar(&debug, "debug", false, "Set advanced output mode")
     flag.Parse()
-
     //log.Println(logDirPath)
     //log.Println(cfgFilePath)
     //log.Println(alarmScriptPath)
@@ -139,6 +174,5 @@ func main () {
     for ;; {
         tcpClient()
         time.Sleep(time.Duration(GetTimeout) * time.Second)
-
     }
 }
