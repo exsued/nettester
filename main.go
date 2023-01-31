@@ -22,7 +22,6 @@ var (
     cfgFilePath string
     sessionServer string
     deviceName string
-    packetPrefix = "name_pref"
     observedIfaceName = "eth0"
 
     interval float64
@@ -36,16 +35,20 @@ type tcpPacket struct {
 func LogFile(out string, dirpath string) {
     nowtime := time.Now()
     finalString := nowtime.Format("15:04:05\t") + out + "\n"
-    fileName := dirpath + deviceName + ":" + nowtime.Format("2006-01-02") + ".txt"
+    fileName := dirpath + deviceName + "/" + nowtime.Format("2006-01-02") + ".txt"
 
     f, err := os.OpenFile(fileName, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
+	defer f.Close()
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer f.Close()
     if _, err = f.WriteString(finalString); err != nil {
         log.Fatal(err)
     }
+}
+func BothLog(msg string, logPath string){
+    log.Println(msg)
+    LogFile(msg, logPath)
 }
 func parseConf(filePath string) ([]string, error) {
     bytesRead, err := ioutil.ReadFile(cfgFilePath)
@@ -109,7 +112,6 @@ func getInnerAddrs() (result []string) {
             case *net.IPAddr:
                     ip = v.IP
             }
-            print(ip.String())
             result = append(result, ip.String())
         }
     }
@@ -118,8 +120,8 @@ func getInnerAddrs() (result []string) {
 func tcpClient() {
 	conn, err := net.Dial("tcp", sessionServer)
     if err != nil {
-        log.Println("dial err:", err)
-        LogFile("dial err: " + err.Error(), logDirPath)
+        msg:= fmt.Sprintf("dial err: (%v)\n", err)
+        BothLog(msg, logDirPath)
         return
     }
     innerAddrs:= getInnerAddrs()
@@ -129,14 +131,16 @@ func tcpClient() {
         packet := tcpPacket {deviceName, innerAddrs}
         err = encoder.Encode(packet)
         if err != nil {
-            log.Println("send err:", err)
-            LogFile("send err: " + err.Error(), logDirPath)
+            msg:= fmt.Sprintf("send err: (%v)\n", err)
+            BothLog(msg, logDirPath)
+
             conn.Close()
         }
         time.Sleep(time.Duration(interval) * time.Second)
     }
-    log.Println("conn closed ", err)
-    LogFile("conn closed " + err.Error(), logDirPath)
+    msg:= fmt.Sprintf("conn closed (%v)\n", err)
+    BothLog(msg, logDirPath)
+
     if conn != nil {
         conn.Close()
     }
@@ -156,15 +160,21 @@ func main () {
     flag.Float64Var(&GetTimeout, "GetTimeout", 10.0, "HTTP GET Timeout (sec)")
     flag.BoolVar(&debug, "debug", false, "Set advanced output mode")
     flag.Parse()
-    //log.Println(logDirPath)
-    //log.Println(cfgFilePath)
-    //log.Println(alarmScriptPath)
+
     //Парсим список пингуемых адресов
     addrs, err := parseConf(cfgFilePath)
     if err != nil {
         log.Fatalf(err.Error())
+        return
     }
-
+    if _, err := os.Stat(logDirPath + deviceName + "/"); err != nil {
+        err = os.Mkdir(logDirPath + deviceName + "/", 0777)
+        if err != nil {
+            msg:= fmt.Sprintf("Create log dir err: (%v)\n", err)
+            BothLog(msg, logDirPath)
+        }
+        return
+    }
     //http пинговка
     pinger = httpping.NewHttpPinger(addrs, interval, alarminterval, GetTimeout)
     pinger.OnRecv = OnReceive
